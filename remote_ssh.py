@@ -2,11 +2,11 @@ import os
 import time
 import asyncssh
 import asyncio
+import logging
 from typing import Tuple, Optional
-from helpers.utils import setup_logger
 
-# Set up the logger
-logger = setup_logger(__name__)
+# Set up logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Connect to a remote SSH server using password-based authentication.
 async def connect_ssh(hostname: str, port: int, username: str, password: str, keepalive_interval: int = 30) -> asyncssh.SSHClient:
@@ -25,7 +25,7 @@ async def connect_ssh(hostname: str, port: int, username: str, password: str, ke
         ValueError: If an SSH-related error occurs.
     """
 
-    logger.info(f"Connecting to SSH server at {hostname}:{port}")
+    logging.info(f"Connecting to SSH server at {hostname}:{port}")
 
     try:
         # Connect to the SSH server with keepalive_interval
@@ -37,10 +37,10 @@ async def connect_ssh(hostname: str, port: int, username: str, password: str, ke
             known_hosts=None,
             keepalive_interval=keepalive_interval
         )
-        logger.info("Successfully connected to the SSH server.")
+        logging.info("Successfully connected to the SSH server.")
         return ssh_client
     except asyncssh.Error as e:
-        logger.error(f"SSH connection error: {e}")
+        logging.error(f"SSH connection error: {e}")
         raise ValueError(f"SSH connection error: {e}") from e
 
 
@@ -65,7 +65,7 @@ async def disconnect_ssh(ssh_client: asyncssh.SSHClient) -> None:
         # Wait for the connection to be fully closed
         await ssh_client.wait_closed()
         # Log the successful closure of the connection
-        logger.info("SSH connection closed successfully.")
+        logging.info("SSH connection closed successfully.")
 
 
 # Upload a local file to a remote server using SFTP.
@@ -89,10 +89,10 @@ async def upload_file(ssh_client: asyncssh.SSHClientConnection, local_file_path:
             await sftp_client.put(local_file_path, remote_path)
             return True  # File uploaded successfully
     except FileNotFoundError:
-        logger.error(f"Local file not found: {local_file_path}")
+        logging.error(f"Local file not found: {local_file_path}")
         return False  # Local file not found
     except asyncssh.SFTPError as sftp_error:
-        logger.error(f"SFTP error during file upload: {sftp_error}")
+        logging.error(f"SFTP error during file upload: {sftp_error}")
         return False  # SFTP error occurred
 
 # Download a file from a remote server using SFTP.
@@ -142,7 +142,7 @@ async def execute_command(ssh_client: asyncssh.SSHClient, command: str, wait_for
     """
 
     # Log the command being executed
-    logger.info(f"Executing command: {command}")
+    logging.info(f"Executing command: {command}")
 
     try:
         # Create a new process for the command
@@ -171,20 +171,20 @@ async def execute_command(ssh_client: asyncssh.SSHClient, command: str, wait_for
                 exit_status = process.exit_status
 
                 # Log the command's output
-                logger.info(f"Command executed successfully: {command}")
-                logger.info(f"stdout: {stdout}")
-                logger.error(f"stderr: {stderr}")
+                logging.info(f"Command executed successfully: {command}")
+                logging.info(f"stdout: {stdout}")
+                logging.error(f"stderr: {stderr}")
 
                 # Calculate the execution time
                 execution_time = round(end_time - start_time)
-                logger.info(f"Execution time: {execution_time} seconds")
+                logging.info(f"Execution time: {execution_time} seconds")
 
                 # Return the stdout of the command
                 return (stdout.decode('utf-8', errors='replace') if isinstance(stdout, bytes) else stdout, exit_status, execution_time)
 
             else:
                 # If not waiting for a response, log that the command was sent
-                logger.info("Command sent without waiting for response.")
+                logging.info("Command sent without waiting for response.")
                 while not process.exit_status_ready():
                     await asyncio.sleep(check_interval)
                     # Perform other actions here while the command is running
@@ -192,10 +192,10 @@ async def execute_command(ssh_client: asyncssh.SSHClient, command: str, wait_for
 
     except asyncssh.Error as ssh_error:
         # If an SSH error occurs, log it and raise a ValueError
-        logger.error(f"SSH error during command execution: {ssh_error}")
+        logging.error(f"SSH error during command execution: {ssh_error}")
         raise ValueError(f"SSH error during command execution: {ssh_error}") from ssh_error
     except asyncio.TimeoutError as e:
-        logger.error(f"Command execution timed out after {timeout} seconds.")
+        logging.error(f"Command execution timed out after {timeout} seconds.")
         raise asyncio.TimeoutError(f"Command execution timed out after {timeout} seconds.") from e
 
 
@@ -235,5 +235,5 @@ async def find_file(ssh_client: asyncssh.SSHClientConnection, remote_directory: 
                 if entry.startswith(prefix):
                     return entry
     except asyncssh.SFTPError as sftp_error:
-        logger.info(f"Error occurred: {sftp_error}")
+        logging.info(f"Error occurred: {sftp_error}")
         return None
